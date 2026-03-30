@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Data & Storage
+data/
+*.db
+*.faiss
+*.index
+
+# Misc
+.DS_Store
+logs/
+*.log
