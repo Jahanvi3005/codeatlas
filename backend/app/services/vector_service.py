@@ -5,14 +5,24 @@ import json
 from sentence_transformers import SentenceTransformer
 from ..core.config import settings
 
-# Initialize model
-try:
-    model = SentenceTransformer(settings.EMBEDDING_MODEL)
-    dimension = model.get_sentence_embedding_dimension()
-except Exception as e:
-    print(f"Warning: Failed to load embeddings model: {e}")
-    # Fallback to a mock for fast tests if downloading fails
-    dimension = 384
+# Lazy-load the model so Uvicorn can bind the port before the download starts.
+# This prevents Render's port-scan timeout during cold start.
+_model = None
+_dimension = 384  # default fallback
+
+def get_model():
+    global _model, _dimension
+    if _model is None:
+        try:
+            _model = SentenceTransformer(settings.EMBEDDING_MODEL)
+            _dimension = _model.get_sentence_embedding_dimension()
+        except Exception as e:
+            print(f"Warning: Failed to load embeddings model: {e}")
+    return _model
+
+def get_dimension():
+    get_model()  # ensure loaded
+    return _dimension
 
 def get_faiss_index(repo_id: str):
     """
@@ -29,7 +39,7 @@ def get_faiss_index(repo_id: str):
         return index, metadata
         
     # Return empty if doesn't exist
-    index = faiss.IndexFlatL2(dimension)
+    index = faiss.IndexFlatL2(get_dimension())
     return index, []
 
 def save_faiss_index(repo_id: str, index, metadata):
@@ -65,7 +75,7 @@ def index_chunks(repo_id: str, files_data: list):
     if not texts_to_embed:
         return
         
-    embeddings = model.encode(texts_to_embed, convert_to_numpy=True)
+    embeddings = get_model().encode(texts_to_embed, convert_to_numpy=True)
     faiss.normalize_L2(embeddings)
     
     index.add(embeddings)
@@ -95,7 +105,7 @@ def index_scrape(repo_id: str, url: str, title: str, chunks: list):
     if not texts_to_embed:
         return
         
-    embeddings = model.encode(texts_to_embed, convert_to_numpy=True)
+    embeddings = get_model().encode(texts_to_embed, convert_to_numpy=True)
     faiss.normalize_L2(embeddings)
     
     index.add(embeddings)
@@ -108,7 +118,7 @@ def search_index(repo_id: str, query: str, top_k: int = 5):
     if index.ntotal == 0:
         return []
         
-    query_emb = model.encode([query], convert_to_numpy=True)
+    query_emb = get_model().encode([query], convert_to_numpy=True)
     faiss.normalize_L2(query_emb)
     
     distances, indices = index.search(query_emb, top_k)

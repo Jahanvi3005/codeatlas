@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+// VITE_API_URL from Render is just the hostname (e.g. codeatlas-backend.onrender.com)
+// In local dev it can be the full URL with /api already appended.
+function buildBaseURL() {
+  const raw = import.meta.env.VITE_API_URL;
+  if (!raw) return 'http://localhost:8000/api';
+  if (raw.startsWith('http')) return raw.replace(/\/$/, '') + '/api';
+  return `https://${raw}/api`;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  baseURL: buildBaseURL(),
   headers: {
     'Content-Type': 'application/json'
   }
