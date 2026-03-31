@@ -31,6 +31,10 @@ async def startup_event():
     except Exception as e:
         print(f"❌ Error during startup: {e}")
 
+@app.get("/")
+async def root():
+    return {"message": "CodeAtlas API is running", "docs": "/docs"}
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/health")
