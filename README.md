@@ -50,3 +50,4 @@ This project includes a `render.yaml` configuration for quick deployment.
 - Expand LLM integration (e.g. OpenAI/Anthropic keys for contextual generation).
 - Graph visualization for folder structures.
 - User authentication and persistent sessions.
+# codeatlas
