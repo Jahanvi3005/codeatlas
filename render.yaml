@@ -14,9 +14,7 @@ services:
       - key: DATA_DIR
         value: /tmp/data
       - key: OLLAMA_URL
-        value: http://localhost:11434  # Update this in Render Dashboard with Cloudflare URL
-      - key: EMBEDDING_MODEL
-        value: all-MiniLM-L6-v2
+        value: http://localhost:11434
 
   # Frontend Static Site
   - type: static
