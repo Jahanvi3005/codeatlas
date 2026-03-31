@@ -1,5 +1,5 @@
 services:
-  # Backend API Service (Free Tier)
+  # Backend API Service (Python Web Service)
   - type: web
     name: codeatlas-backend
     env: python
@@ -14,10 +14,12 @@ services:
       - key: DATA_DIR
         value: /tmp/data
       - key: OLLAMA_URL
-        value: http://localhost:11434
+        value: http://localhost:11434  # Update this in Render Dashboard with Cloudflare URL
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
 
-  # Frontend Static Site (Free Tier)
-  - type: web
+  # Frontend Static Site
+  - type: static
     name: codeatlas-frontend
     env: static
     rootDir: frontend

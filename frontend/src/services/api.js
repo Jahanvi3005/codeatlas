@@ -12,7 +12,9 @@ function buildBaseURL() {
 const api = axios.create({
   baseURL: buildBaseURL(),
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': '69420',
+    'cf-no-browser-verify': 'true'
   }
 });
 

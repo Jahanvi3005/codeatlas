@@ -16,17 +16,22 @@ ngrok http 11434
 ```
 
 ### **Step 3: Get your Public URL**
-Once ngrok starts, look for the **Forwarding** line. It will look like this:
-`Forwarding  https://a1b2-c3d4.ngrok-free.app -> http://localhost:11434`
+When you run the command in Step 2, look for a line starting with `INF +`. It will look like this:
+`+  https://collecting-per-haiti-theology.trycloudflare.com`
 
 **Copy the `https://...` URL.**
 
 ### **Step 4: Update Render**
 1.  Go to your **Render Dashboard**.
-2.  Select your `codeatlas-backend` service.
+2.  Select your **codeatlas-backend** service.
 3.  Go to **Environment**.
-4.  Update the `OLLAMA_URL` variable with the URL you copied in Step 3.
+4.  Update the `OLLAMA_URL` variable with the URL you copied (e.g., `https://collecting-per-haiti-theology.trycloudflare.com`).
 5.  **Save Changes**.
+
+### **Step 5: Configure Frontend**
+1.  Go to your **codeatlas-frontend** static site in Render.
+2.  Go to **Environment**.
+3.  Ensure `VITE_API_URL` is set to your Backend's Render URL (this is usually automated by the `render.yaml` blueprint).
 
 ---
 
