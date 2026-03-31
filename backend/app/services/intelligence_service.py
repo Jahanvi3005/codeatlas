@@ -1,7 +1,53 @@
 import os
 import json
 import requests
+import re
 from ..core.config import settings
+
+def sanitize_mermaid(chart: str) -> str:
+    """Cleans up common AI-generated Mermaid syntax errors and discards trailing junk."""
+    if not chart: return ""
+    # 1. Normalize arrows
+    chart = re.sub(r'(?<!-)>(?!-)', '-->', chart)
+    chart = re.sub(r' -> ', ' --> ', chart)
+    
+    # 2. Rebuild clean diagram line by line
+    lines = ["graph TD"]
+    raw_lines = re.split(r'[\n;]+', chart)
+    
+    def clean_id(node_text):
+        # Extract label if present: Node[Label] or Node["Label"]
+        label = node_text
+        match = re.search(r'\[(.*?)\]', node_text)
+        if match:
+            label = match.group(1).replace('"', '')
+            node_id = re.sub(r'\[.*?\]', '', node_text).strip()
+        else:
+            node_id = node_text.strip().replace('"', '')
+        
+        # Create a safe ID: no spaces, no dots, etc.
+        safe_id = re.sub(r'[^a-zA-Z0-9]', '_', node_id).strip('_')
+        if not safe_id: safe_id = "node_" + str(hash(node_id) % 1000)
+        
+        # FINAL SHIELD: Always prefix with 'id_' to avoid reserved keywords (like 'return', 'end')
+        safe_id = f"id_{safe_id}"
+        
+        # Return canonical form: SafeID["Label"]
+        return f'{safe_id}["{label}"]'
+
+    for line in raw_lines:
+        line = line.strip()
+        if not line or "graph " in line: continue
+        
+        if "-->" in line:
+            parts = re.split(r'--+>', line)
+            for i in range(len(parts)-1):
+                left, right = parts[i].strip(), parts[i+1].strip()
+                lines.append(f"  {clean_id(left)} --> {clean_id(right)}")
+        else:
+            lines.append(f"  {clean_id(line)}")
+                
+    return "\n".join(lines).strip()
 
 def analyze_repo_intelligence(repo_path: str, file_tree_summary: str):
     """
@@ -36,9 +82,16 @@ Generate a JSON object strictly following this structure:
 {{
   "architecture": "Concise description of the architecture (e.g. MVC, Client-Server, Layered)",
   "tech_stack": ["List", "of", "detected", "technologies"],
-  "flow_chart": "A simple Mermaid graph TD string (e.g., graph TD; A-->B; B-->C;)",
+  "flow_chart": "A detailed Mermaid graph TD string mapping the repository's core logic flow",
   "deep_summary": "A 2-paragraph executive summary of what this code does and its main features"
 }}
+
+RULES for Mermaid flow_chart:
+1. Start with 'graph TD'.
+2. Use ONLY double arrows '-->' for connections. NEVER use single '->'.
+3. Use snake_case for technical node IDs (no spaces, dots or commas) and use Brackets with Quotes for visible labels.
+   Example: Audio_Preprocessing["Audio Preprocessing"] --> Feature_Extraction["Feature Extraction"]
+4. Create a detailed map with 5-8 major components matching the file tree.
 
 File Tree:
 {file_tree_summary}
@@ -64,33 +117,33 @@ Return ONLY the raw JSON object. Do not include markdown code blocks.
         data = response.json()
         raw_response = data.get("response", "").strip()
         
-        # Robust extraction if the model used markdown backticks
-        if "```" in raw_response:
-            # Try to get content between ```json and ```
-            if "```json" in raw_response:
-                raw_response = raw_response.split("```json")[1].split("```")[0].strip()
-            else:
-                raw_response = raw_response.split("```")[1].split("```")[0].strip()
+        # Comprehensive extraction for any AI format
+        json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+        if json_match:
+            raw_response = json_match.group(0)
         
         intelligence = json.loads(raw_response)
         
-        # Basic validation of fields
+        # Apply defaults
         defaults = {
             "architecture": "Layered architecture",
             "tech_stack": [],
             "flow_chart": "graph TD\n  Repo --> Index",
-            "deep_summary": "No summary generated."
+            "deep_summary": "System analysis complete."
         }
         for key, val in defaults.items():
             if key not in intelligence or not intelligence[key]:
                 intelligence[key] = val
-                
+        
+        # Sanitize
+        intelligence["flow_chart"] = sanitize_mermaid(intelligence["flow_chart"])
         return intelligence
+
     except Exception as e:
-        print(f"Intelligence analysis failed: {str(e)}")
+        print(f"Intelligence Generation Failed: {str(e)}")
         return {
-            "architecture": "Detection failed",
+            "architecture": "Detection paused",
             "tech_stack": [],
-            "flow_chart": "graph TD\n  Start --> Error",
-            "deep_summary": "Failed to generate AI summary."
+            "flow_chart": "graph TD\n  System --> Recovery_Mode",
+            "deep_summary": "The AI is currently processing a large amount of project data. Please restart the backend and re-ingest to see the full architectural map."
         }

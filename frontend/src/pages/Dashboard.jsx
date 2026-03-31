@@ -236,17 +236,30 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Mermaid Visual Flow */}
-                    <div className="p-8 rounded-3xl bg-card border border-border shadow-xl flex flex-col h-full">
+                    {/* Mermaid Visual Flow - Now Full Width */}
+                    <div className="lg:col-span-2 p-8 rounded-3xl bg-card border border-border shadow-xl flex flex-col">
                       <h3 className="text-xl font-black mb-4 flex items-center gap-3">
                         <Terminal className="w-5 h-5 text-accent" />
                         Logic Flow Diagram
                       </h3>
-                      <div className="flex-1 flex items-center justify-center overflow-hidden">
-                        {summary.flow_chart ? (
-                          <MermaidChart chart={summary.flow_chart} />
+                      <div className="flex-1 flex items-center justify-center overflow-hidden w-full">
+                        {summary.flow_chart && summary.flow_chart !== "graph TD\n  Repo --> Index" ? (
+                          <div className="w-full">
+                            <MermaidChart chart={summary.flow_chart} />
+                          </div>
                         ) : (
-                          <div className="text-sm text-muted-foreground opacity-50 italic">Generating flow visualization...</div>
+                          <div className="flex flex-col items-center justify-center gap-4 py-20 w-full border-2 border-dashed border-border/50 rounded-3xl bg-background/20">
+                            <div className="flex gap-2">
+                              <div className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:-0.3s]"></div>
+                              <div className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:-0.15s]"></div>
+                              <div className="w-2 h-2 rounded-full bg-accent animate-bounce"></div>
+                            </div>
+                            <div className="text-sm font-medium text-muted-foreground">
+                              {summary.flow_chart === "graph TD\n  Repo --> Index" 
+                                ? "Waiting for deep intelligence to initialize..." 
+                                : "Generating deep architectural visualization..."}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
