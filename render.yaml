@@ -16,9 +16,9 @@ services:
       - key: OLLAMA_URL
         value: http://localhost:11434
 
+staticSites:
   # Frontend Static Site
-  - type: static
-    name: codeatlas-frontend
+  - name: codeatlas-frontend
     env: static
     rootDir: frontend
     buildCommand: "npm install && npm run build"
