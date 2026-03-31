@@ -4,8 +4,7 @@ from .core.config import settings
 from .core.database import init_db
 from .api.api import api_router
 
-# Initialize Database
-init_db()
+# Router and Middleware setup
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -21,6 +20,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 Starting CodeAtlas Backend...")
+    try:
+        # Initialize Database in startup to prevent blocking port binding
+        init_db()
+        print("✅ Database initialized successfully.")
+    except Exception as e:
+        print(f"❌ Error during startup: {e}")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
