@@ -25,7 +25,5 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: codeatlas-backend
-          property: url
+        value: https://codeatlas-backend-fdzf.onrender.com
+        
