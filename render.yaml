@@ -14,7 +14,7 @@ services:
       - key: DATA_DIR
         value: /tmp/data
       - key: OLLAMA_URL
-        value: https://collecting-per-haiti-theology.trycloudflare.com
+        value: https://soldier-third-search-searching.trycloudflare.com
 
   # Frontend Static Site
   - type: web
