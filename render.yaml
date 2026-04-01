@@ -14,7 +14,7 @@ services:
       - key: DATA_DIR
         value: /tmp/data
       - key: OLLAMA_URL
-        value: https://soldier-third-search-searching.trycloudflare.com
+        value: https://space-member-aqua-regime.trycloudflare.com
 
   # Frontend Static Site
   - type: web
