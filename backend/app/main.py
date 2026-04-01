@@ -56,12 +56,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"])
 async def root():
     return {"message": "CodeAtlas API is running", "docs": "/docs"}
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-@app.get("/health")
-def health_check():
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health_check():
     return {"status": "ok"}
