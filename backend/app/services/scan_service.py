@@ -5,8 +5,7 @@ from ..core.config import settings
 
 SUPPORTED_EXTENSIONS = {
     ".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".json", 
-    ".txt", ".css", ".html", ".sh", ".yaml", ".yml", ".go", 
-    ".c", ".cpp", ".h", ".hpp", ".rs", ".java", ".kt", ".rb", ".php"
+    ".txt", ".css", ".html", ".sh", ".yaml", ".yml"
 }
 
 def scan_and_chunk_repo(repo_path: str):
@@ -112,19 +111,52 @@ def load_summary(repo_id: str):
             return json.load(f)
     return {"file_count": 0, "language_counts": {}, "total_size_bytes": 0}
 
-def load_tree(repo_id: str):
-    path = os.path.join(settings.DATA_DIR, repo_id, "tree.json")
-    if not os.path.exists(path):
-        print(f"Tree file NOT FOUND at: {path}")
+def build_tree_from_disk(repo_path: str):
+    """Fallback to build a basic tree directly from the repository on disk."""
+    if not os.path.exists(repo_path):
         return []
+    
+    tree_dict = {}
+    for root, dirs, files in os.walk(repo_path):
+        if ".git" in root: continue
+        rel_root = os.path.relpath(root, repo_path)
         
+        parts = rel_root.split(os.sep) if rel_root != "." else []
+        current = tree_dict
+        for part in parts:
+            if not part: continue
+            if part not in current or current[part] == "FILE":
+                current[part] = {}
+            current = current[part]
+            
+        for file in files:
+            ext = os.path.splitext(file)[1].lower()
+            if ext in SUPPORTED_EXTENSIONS:
+                current[file] = "FILE"
+                
+    return tree_dict
+
+def load_tree(repo_id: str):
+    # Try loading from metadata JSON first
+    path = os.path.join(settings.DATA_DIR, repo_id, "tree.json")
+    raw_tree = None
+    
     try:
-        with open(path, 'r') as f:
-            raw_tree = json.load(f)
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                raw_tree = json.load(f)
+        
+        # If metadata missing or empty, try live scan of the cloned repo
+        if not raw_tree:
+            repo_path = os.path.join(settings.REPOS_DIR, repo_id)
+            print(f"DEBUG: tree.json missing. Attempting live scan of {repo_path}")
+            raw_tree = build_tree_from_disk(repo_path)
+            
+        if not raw_tree:
+            return []
             
         def transform(name, content, current_path=""):
             node_path = os.path.join(current_path, name) if current_path else name
-            # Normalize to web-format separators
             node_path = node_path.replace(os.sep, '/')
             
             if content == "FILE":
@@ -145,32 +177,11 @@ def load_tree(repo_id: str):
                 "children": children
             }
 
-        # The top level is the dict keys
         final_tree = []
         if isinstance(raw_tree, dict):
             for key, val in raw_tree.items():
                 final_tree.append(transform(key, val))
             
-        # Fallback: Reconstruct from vector metadata if possible
-        if not final_tree:
-            print(f"Fallback: Attempting tree reconstruction from vector metadata for {repo_id}")
-            meta_path = os.path.join(settings.DATA_DIR, repo_id, "faiss_meta.json")
-            if os.path.exists(meta_path):
-                with open(meta_path, 'r') as f:
-                    meta = json.load(f)
-                paths = {m.get("path") for m in meta if m.get("path")}
-                if paths:
-                    fallback_tree = {}
-                    for p in paths:
-                        pts = p.split('/')
-                        curr = fallback_tree
-                        for pt in pts[:-1]:
-                            if not pt: continue
-                            curr = curr.setdefault(pt, {})
-                        curr[pts[-1]] = "FILE"
-                    for key, val in fallback_tree.items():
-                        final_tree.append(transform(key, val))
-        
         final_tree.sort(key=lambda x: (x["type"] != "directory", x["name"]))
         return final_tree
     except Exception as e:

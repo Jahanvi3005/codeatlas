@@ -236,28 +236,22 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Mermaid Visual Flow - Now Full Width */}
-                    <div className="lg:col-span-2 p-8 rounded-3xl bg-card border border-border shadow-xl flex flex-col">
-                      <h3 className="text-xl font-black mb-4 flex items-center gap-3">
+                    {/* Mermaid Visual Flow - Smaller & Compact */}
+                    <div className="lg:col-span-2 p-6 rounded-3xl bg-card border border-border shadow-md flex flex-col max-h-[400px] overflow-hidden">
+                      <h3 className="text-lg font-black mb-3 flex items-center gap-3">
                         <Terminal className="w-5 h-5 text-accent" />
                         Logic Flow Diagram
                       </h3>
-                      <div className="flex-1 flex items-center justify-center overflow-hidden w-full">
+                      <div className="flex-1 overflow-auto w-full custom-scrollbar">
                         {summary.flow_chart && summary.flow_chart !== "graph TD\n  Repo --> Index" ? (
-                          <div className="w-full">
+                          <div className="w-full scale-90 origin-top">
                             <MermaidChart chart={summary.flow_chart} />
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center gap-4 py-20 w-full border-2 border-dashed border-border/50 rounded-3xl bg-background/20">
-                            <div className="flex gap-2">
-                              <div className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:-0.3s]"></div>
-                              <div className="w-2 h-2 rounded-full bg-accent animate-bounce [animation-delay:-0.15s]"></div>
-                              <div className="w-2 h-2 rounded-full bg-accent animate-bounce"></div>
-                            </div>
-                            <div className="text-sm font-medium text-muted-foreground">
-                              {summary.flow_chart === "graph TD\n  Repo --> Index" 
-                                ? "Waiting for deep intelligence to initialize..." 
-                                : "Generating deep architectural visualization..."}
+                          <div className="flex flex-col items-center justify-center gap-4 py-12 w-full border border-dashed border-border/50 rounded-2xl bg-background/20">
+                            <Loader2 className="w-6 h-6 text-accent animate-spin" />
+                            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                              Generating Visualization...
                             </div>
                           </div>
                         )}
