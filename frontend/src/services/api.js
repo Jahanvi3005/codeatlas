@@ -1,15 +1,18 @@
 import axios from 'axios';
 
-// VITE_API_URL from Render is just the hostname (e.g. codeatlas-backend.onrender.com)
-// In local dev it can be the full URL with /api already appended.
+// Build the API base URL from the environment variable
 function buildBaseURL() {
   const raw = import.meta.env.VITE_API_URL;
   if (!raw) {
-    // In production (e.g. Hugging Face single container), use relative path
+    // In production single-container (HF Spaces), use relative path
     if (import.meta.env.PROD) return '/api';
     return 'http://localhost:8000/api';
   }
-  if (raw.startsWith('http')) return raw.replace(/\/$/, '') + '/api';
+  // Relative path (e.g. /api) — use as-is
+  if (raw.startsWith('/')) return raw;
+  // Full URL with protocol
+  if (raw.startsWith('http')) return raw.replace(/\/$/, '');
+  // Just a hostname (e.g. from Render)
   return `https://${raw}/api`;
 }
 
