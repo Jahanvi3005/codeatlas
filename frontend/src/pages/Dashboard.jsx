@@ -68,17 +68,25 @@ export default function Dashboard() {
     try {
       const { data } = await scrapeApi.getSources(id);
       setScrapedSources(data);
-    } catch (err) {}
+    } catch (err) {
+      console.error('fetchSources failed:', err);
+    }
   };
 
-  // Poll scraped sources while any are still processing
+  // Fetch immediately on mount and whenever the repo id changes
   useEffect(() => {
     fetchSources();
-    const hasActive = scrapedSources.some(s => ['PENDING', 'PARSING', 'INDEXING'].includes(s.status));
+  }, [id]);
+
+  // Poll every 4s as long as any source is still in-flight
+  useEffect(() => {
+    const hasActive = scrapedSources.some(s =>
+      ['PENDING', 'PARSING', 'INDEXING'].includes(s.status)
+    );
     if (!hasActive) return;
-    const interval = setInterval(fetchSources, 3000);
+    const interval = setInterval(fetchSources, 4000);
     return () => clearInterval(interval);
-  }, [scrapedSources.map(s => s.status).join(',')]);
+  }, [scrapedSources]);
 
   const handleScrape = async (e) => {
     e.preventDefault();
