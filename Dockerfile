@@ -4,7 +4,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
-RUN npm run build
+# Set VITE_API_URL to empty so all API calls use relative paths (same-origin on HF Spaces)
+RUN VITE_API_URL=/api npm run build
 
 # --- STAGE 2: Build Backend ---
 FROM python:3.11-slim-bullseye AS backend-build

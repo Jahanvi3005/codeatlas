@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Folder, File, ChevronRight, ChevronDown, Loader2, FolderOpen } from 'lucide-react';
-import { repoApi } from '../services/api';
+import api from '../services/api';
 
 const TreeItem = ({ item, level = 0 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,7 +54,7 @@ export default function FileTreeModal({ isOpen, onClose, repoId }) {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await repoApi.getTree(repoId);
+      const { data } = await api.get(`/repositories/${repoId}/tree`);
       if (data && data.tree) {
         setTree(data.tree);
       } else {

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Settings, Database, Globe, Save, Loader2, CheckCircle } from 'lucide-react';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+import api from '../services/api';
 
 export default function SettingsModal({ isOpen, onClose }) {
   const [config, setConfig] = useState({ ollama_url: '', ollama_model: '' });
@@ -20,7 +18,7 @@ export default function SettingsModal({ isOpen, onClose }) {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API_BASE}/settings/`);
+      const { data } = await api.get(`/settings/`);
       setConfig(data);
     } catch (err) {
       console.error("Failed to fetch settings", err);
@@ -33,7 +31,7 @@ export default function SettingsModal({ isOpen, onClose }) {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put(`${API_BASE}/settings/`, config);
+      await api.put(`/settings/`, config);
       setSaved(true);
       setTimeout(() => {
         setSaved(false);

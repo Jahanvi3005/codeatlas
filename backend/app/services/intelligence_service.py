@@ -109,11 +109,11 @@ Generate a JSON object strictly following this structure:
 }}
 
 RULES for Mermaid flow_chart:
-1. Start with 'graph TD'. Use ONLY double arrows '-->' for connections.
-2. Focus on technical components (e.g. 'API Router', 'Auth Middleware', 'DB Handler') rather than generic user steps.
-3. Map internal technical flow: Source Entry -> Processing Logic -> Storage/AI Inference.
-4. Use valid Mermaid syntax: Node_ID["Human Label"] --> Next_Node_ID["Next Label"].
-5. Include 6-10 nodes to represent the full system lifecycle.
+1. Start with 'graph TD'.
+2. Use ONLY double arrows '-->' for connections. NEVER use single '->'.
+3. Use snake_case for technical node IDs (no spaces, dots or commas) and use Brackets with Quotes for visible labels.
+   Example: Audio_Preprocessing["Audio Preprocessing"] --> Feature_Extraction["Feature Extraction"]
+4. Create a detailed map with 5-8 major components matching the file tree.
 
 File Tree:
 {file_tree_summary}
