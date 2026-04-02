@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Folder, File, ChevronRight, ChevronDown, Loader2, FolderOpen } from 'lucide-react';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+import { repoApi } from '../services/api';
 
 const TreeItem = ({ item, level = 0 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +54,7 @@ export default function FileTreeModal({ isOpen, onClose, repoId }) {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get(`${API_BASE}/repositories/${repoId}/tree`);
+      const { data } = await repoApi.getTree(repoId);
       if (data && data.tree) {
         setTree(data.tree);
       } else {
