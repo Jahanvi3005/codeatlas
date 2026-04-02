@@ -8,26 +8,26 @@ from ..core.config import settings
 def sanitize_mermaid(chart: str) -> str:
     """Cleans up common AI-generated Mermaid syntax errors."""
     if not chart: return ""
-    # 1. Normalize arrows
+    
     chart = re.sub(r'(?<!-)->(?!-)', '-->', chart)
     chart = re.sub(r' -> ', ' --> ', chart)
 
-    # 2. Rebuild clean diagram line by line
+    
     lines = ["graph LR"]
     raw_lines = re.split(r'[\n;]+', chart)
 
     def clean_label(text: str) -> str:
-        # Strip outer quotes, brackets, parens
+        
         text = text.strip().strip('"\'')
-        # Remove characters that break Mermaid parser
+    
         text = re.sub(r'[(){}|<>:,;#]', '', text)
-        # Collapse multiple spaces
+        
         text = re.sub(r'\s+', ' ', text).strip()
         return text or "Node"
 
     def clean_id(node_text: str) -> str:
         node_text = node_text.strip()
-        # Try to extract existing [label] syntax
+        
         match = re.search(r'\[(.+?)\]', node_text)
         if match:
             label = clean_label(match.group(1))
@@ -47,13 +47,13 @@ def sanitize_mermaid(chart: str) -> str:
         line = line.strip()
         if not line or "graph " in line:
             continue
-        # Skip lines that are just edge labels or comments
+        
         if line.startswith('%'):
             continue
 
         if "-->" in line:
-            # Handle optional edge labels like A -->|label| B
-            line = re.sub(r'\|[^|]*\|', '', line)  # strip |edge labels|
+            
+            line = re.sub(r'\|[^|]*\|', '', line)  
             parts = re.split(r'--+>', line)
             for i in range(len(parts) - 1):
                 left = parts[i].strip()
@@ -102,7 +102,7 @@ def analyze_repo_intelligence(repo_path: str, file_tree_summary: str):
     Analyzes the repository using manifest files and file tree.
     Returns structured architecture, tech stack, flow chart, and summary.
     """
-    # 1. Identify and read manifest files
+    
     manifests = {}
     manifest_names = ['package.json', 'requirements.txt', 'go.mod', 'pom.xml',
                       'build.gradle', 'README.md', 'docker-compose.yml', 'Dockerfile']
@@ -119,7 +119,7 @@ def analyze_repo_intelligence(repo_path: str, file_tree_summary: str):
                 except:
                     pass
 
-    # 2. Build Prompt
+    
     manifest_context = "\n".join([f"--- {name} ---\n{content}" for name, content in manifests.items()])
 
     prompt = f"""Analyze the following repository structure and manifest files.
@@ -148,18 +148,18 @@ Manifest Context:
 
 Return ONLY the raw JSON object. Do not include markdown code blocks."""
 
-    # 3. Query HuggingFace
+    
     try:
         raw_response = _query_hf(prompt, as_json=True)
 
-        # Extract JSON from response
+        
         json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
         if json_match:
             raw_response = json_match.group(0)
 
         intelligence = json.loads(raw_response)
 
-        # Apply defaults
+        
         defaults = {
             "architecture": "Layered architecture",
             "tech_stack": [],
@@ -170,7 +170,7 @@ Return ONLY the raw JSON object. Do not include markdown code blocks."""
             if key not in intelligence or not intelligence[key]:
                 intelligence[key] = val
 
-        # Sanitize
+        
         intelligence["flow_chart"] = sanitize_mermaid(intelligence["flow_chart"])
         return intelligence
 
