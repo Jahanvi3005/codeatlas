@@ -6,20 +6,21 @@ from ..core.config import settings
 
 
 def _query_hf(prompt: str) -> str:
-    """Query HuggingFace Inference API with a given prompt."""
-    api_url = f"https://api-inference.huggingface.co/models/{settings.HF_MODEL}"
-    headers = {"Authorization": f"Bearer {settings.HF_API_TOKEN}"}
-
-    # Format prompt in Mistral chat format
-    formatted = f"<s>[INST] {prompt.strip()} [/INST]"
+    """Query HuggingFace Router API with a given prompt."""
+    api_url = "https://router.huggingface.co/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {settings.HF_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
     payload = {
-        "inputs": formatted,
-        "parameters": {
-            "max_new_tokens": 1024,
-            "temperature": 0.3,
-            "return_full_text": False,
-        }
+        "model": settings.HF_MODEL,
+        "messages": [
+            {"role": "user", "content": prompt.strip()}
+        ],
+        "max_tokens": 1024,
+        "temperature": 0.3,
+        "stream": False
     }
 
     try:
@@ -27,8 +28,8 @@ def _query_hf(prompt: str) -> str:
         response.raise_for_status()
         data = response.json()
 
-        if isinstance(data, list) and data:
-            return data[0].get("generated_text", "").strip()
+        if "choices" in data and data["choices"]:
+            return data["choices"][0]["message"]["content"].strip()
         return str(data)
 
     except requests.exceptions.HTTPError as e:

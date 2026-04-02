@@ -46,28 +46,31 @@ def sanitize_mermaid(chart: str) -> str:
 
 
 def _query_hf(prompt: str, as_json: bool = False) -> str:
-    """Query HuggingFace Inference API."""
-    api_url = f"https://api-inference.huggingface.co/models/{settings.HF_MODEL}"
-    headers = {"Authorization": f"Bearer {settings.HF_API_TOKEN}"}
+    """Query HuggingFace Router API."""
+    api_url = "https://router.huggingface.co/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {settings.HF_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
 
     json_hint = "\nRespond ONLY with a raw JSON object. No markdown, no explanation." if as_json else ""
-    formatted = f"<s>[INST] {prompt.strip()}{json_hint} [/INST]"
-
+    
     payload = {
-        "inputs": formatted,
-        "parameters": {
-            "max_new_tokens": 1500,
-            "temperature": 0.2,
-            "return_full_text": False,
-        }
+        "model": settings.HF_MODEL,
+        "messages": [
+            {"role": "user", "content": f"{prompt.strip()}{json_hint}"}
+        ],
+        "max_tokens": 1500,
+        "temperature": 0.2,
+        "stream": False
     }
 
     response = requests.post(api_url, headers=headers, json=payload, timeout=120)
     response.raise_for_status()
     data = response.json()
 
-    if isinstance(data, list) and data:
-        return data[0].get("generated_text", "").strip()
+    if "choices" in data and data["choices"]:
+        return data["choices"][0]["message"]["content"].strip()
     return str(data)
 
 
