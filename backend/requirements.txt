@@ -9,3 +9,4 @@ beautifulsoup4>=4.12.3
 requests>=2.32.3
 SQLAlchemy>=2.0.31
 pydantic-settings>=2.3.4
+huggingface-hub>=0.23.0

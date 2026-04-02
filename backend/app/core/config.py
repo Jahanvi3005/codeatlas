@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
-    OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
-    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2")
+    HF_API_TOKEN: str = os.getenv("HF_API_TOKEN", "")
+    HF_MODEL: str = os.getenv("HF_MODEL", "mistralai/Mistral-7B-Instruct-v0.3")
 
     class Config:
         env_file = ".env"

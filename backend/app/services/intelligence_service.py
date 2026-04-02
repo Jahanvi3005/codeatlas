@@ -4,19 +4,19 @@ import requests
 import re
 from ..core.config import settings
 
+
 def sanitize_mermaid(chart: str) -> str:
     """Cleans up common AI-generated Mermaid syntax errors and discards trailing junk."""
     if not chart: return ""
     # 1. Normalize arrows
     chart = re.sub(r'(?<!-)>(?!-)', '-->', chart)
     chart = re.sub(r' -> ', ' --> ', chart)
-    
+
     # 2. Rebuild clean diagram line by line
     lines = ["graph TD"]
     raw_lines = re.split(r'[\n;]+', chart)
-    
+
     def clean_id(node_text):
-        # Extract label if present: Node[Label] or Node["Label"]
         label = node_text
         match = re.search(r'\[(.*?)\]', node_text)
         if match:
@@ -24,21 +24,16 @@ def sanitize_mermaid(chart: str) -> str:
             node_id = re.sub(r'\[.*?\]', '', node_text).strip()
         else:
             node_id = node_text.strip().replace('"', '')
-        
-        # Create a safe ID: no spaces, no dots, etc.
+
         safe_id = re.sub(r'[^a-zA-Z0-9]', '_', node_id).strip('_')
         if not safe_id: safe_id = "node_" + str(hash(node_id) % 1000)
-        
-        # FINAL SHIELD: Always prefix with 'id_' to avoid reserved keywords (like 'return', 'end')
         safe_id = f"id_{safe_id}"
-        
-        # Return canonical form: SafeID["Label"]
         return f'{safe_id}["{label}"]'
 
     for line in raw_lines:
         line = line.strip()
         if not line or "graph " in line: continue
-        
+
         if "-->" in line:
             parts = re.split(r'--+>', line)
             for i in range(len(parts)-1):
@@ -46,8 +41,35 @@ def sanitize_mermaid(chart: str) -> str:
                 lines.append(f"  {clean_id(left)} --> {clean_id(right)}")
         else:
             lines.append(f"  {clean_id(line)}")
-                
+
     return "\n".join(lines).strip()
+
+
+def _query_hf(prompt: str, as_json: bool = False) -> str:
+    """Query HuggingFace Inference API."""
+    api_url = f"https://api-inference.huggingface.co/models/{settings.HF_MODEL}"
+    headers = {"Authorization": f"Bearer {settings.HF_API_TOKEN}"}
+
+    json_hint = "\nRespond ONLY with a raw JSON object. No markdown, no explanation." if as_json else ""
+    formatted = f"<s>[INST] {prompt.strip()}{json_hint} [/INST]"
+
+    payload = {
+        "inputs": formatted,
+        "parameters": {
+            "max_new_tokens": 1500,
+            "temperature": 0.2,
+            "return_full_text": False,
+        }
+    }
+
+    response = requests.post(api_url, headers=headers, json=payload, timeout=120)
+    response.raise_for_status()
+    data = response.json()
+
+    if isinstance(data, list) and data:
+        return data[0].get("generated_text", "").strip()
+    return str(data)
+
 
 def analyze_repo_intelligence(repo_path: str, file_tree_summary: str):
     """
@@ -56,28 +78,25 @@ def analyze_repo_intelligence(repo_path: str, file_tree_summary: str):
     """
     # 1. Identify and read manifest files
     manifests = {}
-    manifest_names = ['package.json', 'requirements.txt', 'go.mod', 'pom.xml', 'build.gradle', 'README.md', 'docker-compose.yml', 'Dockerfile']
-    
+    manifest_names = ['package.json', 'requirements.txt', 'go.mod', 'pom.xml',
+                      'build.gradle', 'README.md', 'docker-compose.yml', 'Dockerfile']
+
     for root, _, files in os.walk(repo_path):
-        # Only look at top levels for manifests
         rel_depth = os.path.relpath(root, repo_path).count(os.sep)
         if rel_depth > 1:
             continue
-            
         for f in files:
             if f in manifest_names:
                 try:
                     with open(os.path.join(root, f), 'r', encoding='utf-8') as file:
-                        # Only take first 2KB of each manifest for context
                         manifests[f] = file.read(2048)
                 except:
                     pass
 
     # 2. Build Prompt
     manifest_context = "\n".join([f"--- {name} ---\n{content}" for name, content in manifests.items()])
-    
-    prompt = f"""
-Analyze the following repository structure and manifest files. 
+
+    prompt = f"""Analyze the following repository structure and manifest files.
 Generate a JSON object strictly following this structure:
 {{
   "architecture": "Concise description of the architecture (e.g. MVC, Client-Server, Layered)",
@@ -99,31 +118,19 @@ File Tree:
 Manifest Context:
 {manifest_context}
 
-Return ONLY the raw JSON object. Do not include markdown code blocks.
-"""
+Return ONLY the raw JSON object. Do not include markdown code blocks."""
 
-    # 3. Query Ollama
-    url = f"{settings.OLLAMA_URL.rstrip('/')}/api/generate"
-    payload = {
-        "model": settings.OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "format": "json"
-    }
-
+    # 3. Query HuggingFace
     try:
-        response = requests.post(url, json=payload, timeout=180)
-        response.raise_for_status()
-        data = response.json()
-        raw_response = data.get("response", "").strip()
-        
-        # Comprehensive extraction for any AI format
+        raw_response = _query_hf(prompt, as_json=True)
+
+        # Extract JSON from response
         json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
         if json_match:
             raw_response = json_match.group(0)
-        
+
         intelligence = json.loads(raw_response)
-        
+
         # Apply defaults
         defaults = {
             "architecture": "Layered architecture",
@@ -134,7 +141,7 @@ Return ONLY the raw JSON object. Do not include markdown code blocks.
         for key, val in defaults.items():
             if key not in intelligence or not intelligence[key]:
                 intelligence[key] = val
-        
+
         # Sanitize
         intelligence["flow_chart"] = sanitize_mermaid(intelligence["flow_chart"])
         return intelligence
