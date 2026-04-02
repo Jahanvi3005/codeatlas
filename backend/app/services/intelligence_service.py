@@ -13,7 +13,7 @@ def sanitize_mermaid(chart: str) -> str:
     chart = re.sub(r' -> ', ' --> ', chart)
 
     # 2. Rebuild clean diagram line by line
-    lines = ["graph TD"]
+    lines = ["graph LR"]
     raw_lines = re.split(r'[\n;]+', chart)
 
     def clean_id(node_text):
@@ -104,16 +104,18 @@ Generate a JSON object strictly following this structure:
 {{
   "architecture": "Concise description of the architecture (e.g. MVC, Client-Server, Layered)",
   "tech_stack": ["List", "of", "detected", "technologies"],
-  "flow_chart": "A detailed Mermaid graph TD string mapping the repository's core logic flow",
+  "flow_chart": "A detailed Mermaid graph LR string mapping the repository's core logic flow",
   "deep_summary": "A 2-paragraph executive summary of what this code does and its main features"
 }}
 
 RULES for Mermaid flow_chart:
-1. Start with 'graph TD'.
+1. Start with 'graph LR' (left-to-right layout).
 2. Use ONLY double arrows '-->' for connections. NEVER use single '->'.
 3. Use snake_case for technical node IDs (no spaces, dots or commas) and use Brackets with Quotes for visible labels.
-   Example: Audio_Preprocessing["Audio Preprocessing"] --> Feature_Extraction["Feature Extraction"]
-4. Create a detailed map with 5-8 major components matching the file tree.
+   Use REAL technical component names from the actual tech stack detected (e.g. React_Frontend["React Frontend"], FastAPI_Backend["FastAPI Backend"], FAISS_Index["FAISS Vector Index"]).
+   NEVER use generic terms like 'Client Request', 'Frontend_Routing', 'API_Gateway' as node labels.
+   Example: React_Frontend["React Frontend"] --> FastAPI["FastAPI Backend"] --> FAISS["FAISS Index"]
+4. Create a detailed map with 5-8 major components matching the actual technologies in the file tree.
 
 File Tree:
 {file_tree_summary}
