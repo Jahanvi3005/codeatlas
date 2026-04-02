@@ -42,16 +42,14 @@ def process_repository(repo_id: str, url: str, db: Session):
         
         # 5. Deep Intelligence Analysis
         update_status(db, repo_id, ProcessingStatus.COMPLETED)
-        # Run intelligence after marking completed as it might take time
-        # This allows the user to see the dashboard while deep analysis is running.
-        # We merge it into the existing metadata.
+        
         try:
             tree_data = scan_service.load_tree(repo_id)
-            # Create a simple string summary of the file tree
+            
             def get_names(nodes, depth=0):
-                if depth > 2: return "" # Don't go deeper than 2 levels for architecture summary
+                if depth > 2: return "" 
                 res = ""
-                for n in nodes[:15]: # Limit width to 15 per folder
+                for n in nodes[:15]: 
                     res += "  " * depth + f"- {n['name']} ({n['type']})\n"
                     if n.get('children'):
                         res += get_names(n['children'], depth + 1)
@@ -70,8 +68,7 @@ def process_repository(repo_id: str, url: str, db: Session):
         logger.error(f"Processing failed: {str(e)}")
         update_status(db, repo_id, ProcessingStatus.FAILED, str(e))
     finally:
-        # Clean up code locally if disk space is a concern, but we need it for context later?
-        # Typically we keep it if we want to show it in the UI, or we stream it.
+        
         pass
 
 def get_summary(repo_id: str):
