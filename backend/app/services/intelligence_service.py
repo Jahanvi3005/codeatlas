@@ -6,41 +6,64 @@ from ..core.config import settings
 
 
 def sanitize_mermaid(chart: str) -> str:
-    """Cleans up common AI-generated Mermaid syntax errors and discards trailing junk."""
+    """Cleans up common AI-generated Mermaid syntax errors."""
     if not chart: return ""
     # 1. Normalize arrows
-    chart = re.sub(r'(?<!-)>(?!-)', '-->', chart)
+    chart = re.sub(r'(?<!-)->(?!-)', '-->', chart)
     chart = re.sub(r' -> ', ' --> ', chart)
 
     # 2. Rebuild clean diagram line by line
     lines = ["graph LR"]
     raw_lines = re.split(r'[\n;]+', chart)
 
-    def clean_id(node_text):
-        label = node_text
-        match = re.search(r'\[(.*?)\]', node_text)
+    def clean_label(text: str) -> str:
+        # Strip outer quotes, brackets, parens
+        text = text.strip().strip('"\'')
+        # Remove characters that break Mermaid parser
+        text = re.sub(r'[(){}|<>:,;#]', '', text)
+        # Collapse multiple spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text or "Node"
+
+    def clean_id(node_text: str) -> str:
+        node_text = node_text.strip()
+        # Try to extract existing [label] syntax
+        match = re.search(r'\[(.+?)\]', node_text)
         if match:
-            label = match.group(1).replace('"', '')
+            label = clean_label(match.group(1))
             node_id = re.sub(r'\[.*?\]', '', node_text).strip()
         else:
-            node_id = node_text.strip().replace('"', '')
+            label = clean_label(node_text)
+            node_id = node_text.strip().strip('"\'')
 
-        safe_id = re.sub(r'[^a-zA-Z0-9]', '_', node_id).strip('_')
-        if not safe_id: safe_id = "node_" + str(hash(node_id) % 1000)
+        safe_id = re.sub(r'[^a-zA-Z0-9_]', '_', node_id).strip('_')
+        safe_id = re.sub(r'_+', '_', safe_id)
+        if not safe_id or safe_id == '_':
+            safe_id = "node_" + str(abs(hash(node_id)) % 9999)
         safe_id = f"id_{safe_id}"
         return f'{safe_id}["{label}"]'
 
     for line in raw_lines:
         line = line.strip()
-        if not line or "graph " in line: continue
+        if not line or "graph " in line:
+            continue
+        # Skip lines that are just edge labels or comments
+        if line.startswith('%'):
+            continue
 
         if "-->" in line:
+            # Handle optional edge labels like A -->|label| B
+            line = re.sub(r'\|[^|]*\|', '', line)  # strip |edge labels|
             parts = re.split(r'--+>', line)
-            for i in range(len(parts)-1):
-                left, right = parts[i].strip(), parts[i+1].strip()
-                lines.append(f"  {clean_id(left)} --> {clean_id(right)}")
+            for i in range(len(parts) - 1):
+                left = parts[i].strip()
+                right = parts[i + 1].strip()
+                if left and right:
+                    lines.append(f"  {clean_id(left)} --> {clean_id(right)}")
         else:
-            lines.append(f"  {clean_id(line)}")
+            cleaned = clean_id(line)
+            if cleaned:
+                lines.append(f"  {cleaned}")
 
     return "\n".join(lines).strip()
 
