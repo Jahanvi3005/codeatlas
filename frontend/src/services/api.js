@@ -4,7 +4,11 @@ import axios from 'axios';
 // In local dev it can be the full URL with /api already appended.
 function buildBaseURL() {
   const raw = import.meta.env.VITE_API_URL;
-  if (!raw) return 'http://localhost:8000/api';
+  if (!raw) {
+    // In production (e.g. Hugging Face single container), use relative path
+    if (import.meta.env.PROD) return '/api';
+    return 'http://localhost:8000/api';
+  }
   if (raw.startsWith('http')) return raw.replace(/\/$/, '') + '/api';
   return `https://${raw}/api`;
 }

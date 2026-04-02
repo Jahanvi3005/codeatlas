@@ -47,6 +47,10 @@ async def log_requests(request: Request, call_next):
     print(f"📤 [RESPONSE] {request.method} {request.url.path} - {response.status_code} ({duration:.2f}s)")
     return response
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 # 🌉 CORS MIDDLEWARE
 app.add_middleware(
     CORSMiddleware,
@@ -56,9 +60,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.api_route("/", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"])
-async def root():
-    return {"message": "CodeAtlas API is running", "docs": "/docs"}
+# 🏞️ SERVE FRONTEND (If built)
+# Only mount if the static directory exists (e.g., in Docker build)
+static_path = os.path.join(os.path.dirname(__file__), "..", "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(os.path.join(static_path, "index.html"))
+
+    # Re-route all other non-API routes to index (for React Router)
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"])
+    async def catch_all(request: Request, full_path: str):
+        if not full_path.startswith("api"):
+            return FileResponse(os.path.join(static_path, "index.html"))
+        return {"error": "API route not found"}
+
+else:
+    @app.api_route("/", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"])
+    async def root():
+        return {"message": "CodeAtlas API is running (Static not found)", "docs": "/docs"}
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
