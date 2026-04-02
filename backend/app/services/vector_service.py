@@ -1,8 +1,6 @@
 import os
-import faiss
 import numpy as np
 import json
-from sentence_transformers import SentenceTransformer
 from ..core.config import settings
 
 # Lazy-load the model so Uvicorn can bind the port before the download starts.
@@ -14,6 +12,8 @@ def get_model():
     global _model, _dimension
     if _model is None:
         try:
+            from sentence_transformers import SentenceTransformer
+            print(f"DEBUG: Loading embedding model: {settings.EMBEDDING_MODEL}")
             _model = SentenceTransformer(settings.EMBEDDING_MODEL)
             _dimension = _model.get_sentence_embedding_dimension()
         except Exception as e:
@@ -21,13 +21,17 @@ def get_model():
     return _model
 
 def get_dimension():
-    get_model()  # ensure loaded
+    # If the model is already loaded, use its dimension. 
+    # Otherwise, don't trigger a load just for dimension if we can help it, 
+    # but for FAISS we usually need it.
+    get_model()  
     return _dimension
 
 def get_faiss_index(repo_id: str):
     """
     Returns the loaded FAISS index and metadata for a repo.
     """
+    import faiss
     repo_data_dir = os.path.join(settings.DATA_DIR, repo_id)
     index_path = os.path.join(repo_data_dir, "faiss_index.bin")
     meta_path = os.path.join(repo_data_dir, "faiss_meta.json")
@@ -43,6 +47,7 @@ def get_faiss_index(repo_id: str):
     return index, []
 
 def save_faiss_index(repo_id: str, index, metadata):
+    import faiss
     repo_data_dir = os.path.join(settings.DATA_DIR, repo_id)
     os.makedirs(repo_data_dir, exist_ok=True)
     
@@ -54,6 +59,7 @@ def index_chunks(repo_id: str, files_data: list):
     """
     Indexes the file chunks into FAISS and stores the metadata
     """
+    import faiss
     index, metadata = get_faiss_index(repo_id)
     
     texts_to_embed = []
@@ -87,6 +93,7 @@ def index_scrape(repo_id: str, url: str, title: str, chunks: list):
     """
     Indexes newly scraped external docs into the repo's FAISS index.
     """
+    import faiss
     index, metadata = get_faiss_index(repo_id)
     
     texts_to_embed = []
@@ -114,6 +121,7 @@ def index_scrape(repo_id: str, url: str, title: str, chunks: list):
     save_faiss_index(repo_id, index, metadata)
 
 def search_index(repo_id: str, query: str, top_k: int = 5):
+    import faiss
     index, metadata = get_faiss_index(repo_id)
     if index.ntotal == 0:
         return []
