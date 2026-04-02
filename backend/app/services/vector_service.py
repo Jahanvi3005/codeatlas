@@ -1,31 +1,42 @@
 import os
 import numpy as np
 import json
+import requests
+import time
 from ..core.config import settings
 
-# Lazy-load the model so Uvicorn can bind the port before the download starts.
-# This prevents Render's port-scan timeout during cold start.
-_model = None
-_dimension = 384  # default fallback
+# Offloading embeddings to HuggingFace Inference API to save RAM on Render Free Tier.
+# This prevents OOM (Out of Memory) crashes by avoiding loading Torch/Sentence-Transformers locally.
 
-def get_model():
-    global _model, _dimension
-    if _model is None:
+def get_embeddings(texts: list) -> np.ndarray:
+    """Query HuggingFace Inference API for embeddings."""
+    # We use the same model as configured or a standard embedding model
+    model_id = "sentence-transformers/all-MiniLM-L6-v2"
+    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+    headers = {"Authorization": f"Bearer {settings.HF_API_TOKEN}"}
+    
+    # HF Inference API might return 503 if model is loading
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            from sentence_transformers import SentenceTransformer
-            print(f"DEBUG: Loading embedding model: {settings.EMBEDDING_MODEL}")
-            _model = SentenceTransformer(settings.EMBEDDING_MODEL)
-            _dimension = _model.get_sentence_embedding_dimension()
+            response = requests.post(api_url, headers=headers, json={"inputs": texts}, timeout=60)
+            if response.status_code == 503:
+                print(f"Embedding model loading, waiting... (Attempt {attempt+1})")
+                time.sleep(10)
+                continue
+                
+            response.raise_for_status()
+            embeddings = response.json()
+            return np.array(embeddings, dtype=np.float32)
         except Exception as e:
-            print(f"Warning: Failed to load embeddings model: {e}")
-    return _model
+            if attempt == max_retries - 1:
+                print(f"Error calling HF Embedding API: {e}")
+                raise e
+            time.sleep(2)
+    return np.zeros((len(texts), 384), dtype=np.float32)
 
 def get_dimension():
-    # If the model is already loaded, use its dimension. 
-    # Otherwise, don't trigger a load just for dimension if we can help it, 
-    # but for FAISS we usually need it.
-    get_model()  
-    return _dimension
+    return 384  # fixed for all-MiniLM-L6-v2
 
 def get_faiss_index(repo_id: str):
     """
@@ -81,7 +92,15 @@ def index_chunks(repo_id: str, files_data: list):
     if not texts_to_embed:
         return
         
-    embeddings = get_model().encode(texts_to_embed, convert_to_numpy=True)
+    # Process in batches of 50 to avoid HF API payload limits
+    batch_size = 50
+    all_embeddings = []
+    for i in range(0, len(texts_to_embed), batch_size):
+        batch = texts_to_embed[i:i + batch_size]
+        embeddings = get_embeddings(batch)
+        all_embeddings.append(embeddings)
+    
+    embeddings = np.vstack(all_embeddings)
     faiss.normalize_L2(embeddings)
     
     index.add(embeddings)
@@ -112,7 +131,7 @@ def index_scrape(repo_id: str, url: str, title: str, chunks: list):
     if not texts_to_embed:
         return
         
-    embeddings = get_model().encode(texts_to_embed, convert_to_numpy=True)
+    embeddings = get_embeddings(texts_to_embed)
     faiss.normalize_L2(embeddings)
     
     index.add(embeddings)
@@ -126,7 +145,7 @@ def search_index(repo_id: str, query: str, top_k: int = 5):
     if index.ntotal == 0:
         return []
         
-    query_emb = get_model().encode([query], convert_to_numpy=True)
+    query_emb = get_embeddings([query])
     faiss.normalize_L2(query_emb)
     
     distances, indices = index.search(query_emb, top_k)
