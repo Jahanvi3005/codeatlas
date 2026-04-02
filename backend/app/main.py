@@ -63,31 +63,17 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # 🏞️ SERVE FRONTEND (If built)
-# We do this AFTER the API routes to ensure they take priority
+# Must come AFTER API routes so /api/* is handled by FastAPI, not static files
 static_path = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "static"))
-print(f">>> Static path resolved to: {static_path}")
-print(f">>> Static path exists: {os.path.exists(static_path)}")
+print(f">>> Static path: {static_path}")
+print(f">>> Static exists: {os.path.exists(static_path)}")
 
 if os.path.exists(static_path):
-    assets_path = os.path.join(static_path, "assets")
-    if os.path.exists(assets_path):
-        # Mount CSS/JS assets
-        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
-        print(f"✅ Mounted /assets from {assets_path}")
-    else:
-        print(f"⚠️ Assets dir not found at {assets_path}")
-
-    # Serve the main index.html for root and all frontend routes (SPA behavior)
-    @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
-        if full_path.startswith("api"):
-            return {"error": "API route not found"}
-        index_file = os.path.join(static_path, "index.html")
-        if os.path.exists(index_file):
-            return FileResponse(index_file)
-        return {"error": "Frontend not built"}
+    # html=True: serves index.html for /, assets normally, and falls back to index.html for SPA routes
+    app.mount("/", StaticFiles(directory=static_path, html=True), name="static")
+    print(f"✅ Mounted static files from {static_path}")
 else:
-    print(f"⚠️ No static directory found. Serving API only.")
+    print("⚠️ No static directory found — API-only mode")
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
