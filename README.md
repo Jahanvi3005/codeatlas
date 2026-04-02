@@ -1,3 +1,13 @@
+---
+title: CodeAtlas
+emoji: 🏙️
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # CodeAtlas
 
 CodeAtlas is a full-stack AI-empowered repository intelligence platform. It clones your public Git repositories, chunks the code semantics into localized embeddings, and provides a polished chat interface to explore the architecture or debug its flows entirely using natural language. 
