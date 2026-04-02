@@ -4,11 +4,10 @@ import json
 from sentence_transformers import SentenceTransformer
 from ..core.config import settings
 
-# Unified vector service for FAISS + Sentence-Transformers.
-# Using local models now that we are on Hugging Face (16GB RAM).
+.
 
 _model = None
-_dimension = 384  # default for all-MiniLM-L6-v2
+_dimension = 384  
 
 def get_model():
     global _model, _dimension
@@ -22,7 +21,7 @@ def get_model():
     return _model
 
 def get_dimension():
-    get_model()  # ensure loaded
+    get_model()  
     return _dimension
 
 def get_faiss_index(repo_id: str):
@@ -40,7 +39,7 @@ def get_faiss_index(repo_id: str):
             metadata = json.load(f)
         return index, metadata
         
-    # Return empty if doesn't exist
+    
     index = faiss.IndexFlatL2(get_dimension())
     return index, []
 
@@ -66,7 +65,7 @@ def index_chunks(repo_id: str, files_data: list):
     for file in files_data:
         path = file["path"]
         for chunk in file["chunks"]:
-            # Contextualize chunk
+            
             text = f"File: {path}\nContent:\n{chunk}"
             texts_to_embed.append(text)
             new_metadata.append({
