@@ -38,6 +38,7 @@ export const chatApi = {
 
 export const scrapeApi = {
   scrapeDocs: (repository_id, url) => api.post('/scrape/docs', { repository_id, url }),
+  getSources: (repository_id) => api.get(`/scrape/docs/${repository_id}`),
 };
 
 export default api;

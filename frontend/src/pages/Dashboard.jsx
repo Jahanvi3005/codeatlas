@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [scrapeUrl, setScrapeUrl] = useState('');
   const [scraping, setScraping] = useState(false);
   const [scrapeSuccess, setScrapeSuccess] = useState(false);
+  const [scrapedSources, setScrapedSources] = useState([]);
   
   // Polling for status
   useEffect(() => {
@@ -63,6 +64,22 @@ export default function Dashboard() {
     } catch (err) {}
   };
 
+  const fetchSources = async () => {
+    try {
+      const { data } = await scrapeApi.getSources(id);
+      setScrapedSources(data);
+    } catch (err) {}
+  };
+
+  // Poll scraped sources while any are still processing
+  useEffect(() => {
+    fetchSources();
+    const hasActive = scrapedSources.some(s => ['PENDING', 'PARSING', 'INDEXING'].includes(s.status));
+    if (!hasActive) return;
+    const interval = setInterval(fetchSources, 3000);
+    return () => clearInterval(interval);
+  }, [scrapedSources.map(s => s.status).join(',')]);
+
   const handleScrape = async (e) => {
     e.preventDefault();
     if (!scrapeUrl.trim() || scraping) return;
@@ -73,7 +90,7 @@ export default function Dashboard() {
       setScrapeSuccess(true);
       setScrapeUrl('');
       setTimeout(() => setScrapeSuccess(false), 3000);
-      // Refresh summary to see if new data affected metrics (optional)
+      fetchSources(); // Immediately refresh to show the new pending item
       fetchSummary();
     } catch (err) {
       alert("Failed to scrape URL.");
@@ -301,6 +318,40 @@ export default function Dashboard() {
                               {scrapeSuccess ? 'Scraped!' : 'Add Docs'}
                             </button>
                           </form>
+
+                          {/* Scraped Sources List */}
+                          {scrapedSources.length > 0 && (
+                            <div className="mt-4 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                              {scrapedSources.map(source => {
+                                const statusConfig = {
+                                  PENDING:  { label: 'Queued',   cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
+                                  PARSING:  { label: 'Parsing',  cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+                                  INDEXING: { label: 'Indexing', cls: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+                                  COMPLETED:{ label: 'Indexed',  cls: 'bg-green-500/10 text-green-400 border-green-500/20' },
+                                  FAILED:   { label: 'Failed',   cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
+                                };
+                                const { label, cls } = statusConfig[source.status] || statusConfig.PENDING;
+                                const isActive = ['PENDING','PARSING','INDEXING'].includes(source.status);
+                                return (
+                                  <div key={source.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-background/40 border border-border/50">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[11px] font-semibold truncate leading-tight" title={source.url}>
+                                        {source.title !== 'Pending...' ? source.title : source.url}
+                                      </p>
+                                      <p className="text-[10px] text-muted-foreground truncate" title={source.url}>{source.url}</p>
+                                    </div>
+                                    <span className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider ${cls}`}>
+                                      {isActive && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                                      {label}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {scrapedSources.length === 0 && (
+                            <p className="mt-3 text-[10px] text-muted-foreground/60 italic">No external docs injected yet. Add a URL above to enrich AI context.</p>
+                          )}
                         </div>
                     </div>
 

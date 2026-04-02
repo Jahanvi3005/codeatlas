@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from typing import List
 import uuid
 
 from ...core.database import get_db
@@ -30,3 +31,13 @@ def scrape_docs(
     background_tasks.add_task(scrape_service.process_scrape, scrape_id, request.repository_id, request.url, db)
     
     return scrape
+
+@router.get("/docs/{repo_id}", response_model=List[ScrapeResponse])
+def get_scraped_sources(repo_id: str, db: Session = Depends(get_db)):
+    sources = (
+        db.query(ScrapedSource)
+        .filter(ScrapedSource.repository_id == repo_id)
+        .order_by(ScrapedSource.created_at.desc())
+        .all()
+    )
+    return sources
