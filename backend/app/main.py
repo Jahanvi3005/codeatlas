@@ -60,29 +60,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
 # 🏞️ SERVE FRONTEND (If built)
-# Only mount if the static directory exists (e.g., in Docker build)
+# We do this AFTER the API routes to ensure they take priority
 static_path = os.path.join(os.path.dirname(__file__), "..", "static")
 if os.path.exists(static_path):
-    app.mount("/static", StaticFiles(directory=static_path), name="static")
+    # Mount regular static assets (JS/CSS)
+    # Vite usually puts them in /assets/
+    app.mount("/assets", StaticFiles(directory=os.path.join(static_path, "assets")), name="assets")
 
-    @app.get("/")
-    async def serve_index():
+    # Serve the main index.html for the root and all other unknown paths (SPA behavior)
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # If it's a request for an API, we already missed it, so return 404
+        if full_path.startswith("api"):
+            return {"error": "API route not found"}
+        # Otherwise, serve the React app
         return FileResponse(os.path.join(static_path, "index.html"))
-
-    # Re-route all other non-API routes to index (for React Router)
-    @app.api_route("/{full_path:path}", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"])
-    async def catch_all(request: Request, full_path: str):
-        if not full_path.startswith("api"):
-            return FileResponse(os.path.join(static_path, "index.html"))
-        return {"error": "API route not found"}
-
-else:
-    @app.api_route("/", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"])
-    async def root():
-        return {"message": "CodeAtlas API is running (Static not found)", "docs": "/docs"}
-
-app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
