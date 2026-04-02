@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
         traceback.print_exc()
     
     yield
-    # Shutdown logic (empty for now)
+    
     print("👋 Backend shutting down...")
 
 app = FastAPI(
@@ -34,8 +34,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# 📥 REQUEST LOGGER MIDDLEWARE
-# This will print every single request to Render logs so we can debug the 502/CORS
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
@@ -51,7 +50,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
-# 🌉 CORS MIDDLEWARE
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -62,14 +61,13 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# 🏞️ SERVE FRONTEND (If built)
-# Must come AFTER API routes so /api/* is handled by FastAPI, not static files
+
 static_path = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "static"))
 print(f">>> Static path: {static_path}")
 print(f">>> Static exists: {os.path.exists(static_path)}")
 
 if os.path.exists(static_path):
-    # html=True: serves index.html for /, assets normally, and falls back to index.html for SPA routes
+    
     app.mount("/", StaticFiles(directory=static_path, html=True), name="static")
     print(f"✅ Mounted static files from {static_path}")
 else:
