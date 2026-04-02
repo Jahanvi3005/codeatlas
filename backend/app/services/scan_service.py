@@ -114,34 +114,44 @@ def load_summary(repo_id: str):
 def load_tree(repo_id: str):
     path = os.path.join(settings.DATA_DIR, repo_id, "tree.json")
     if not os.path.exists(path):
+        print(f"Tree file NOT FOUND at: {path}")
         return []
         
-    with open(path, 'r') as f:
-        raw_tree = json.load(f)
-        
-    def transform(name, content, current_path=""):
-        node_path = os.path.join(current_path, name) if current_path else name
-        if content == "FILE":
-            return {"name": name, "path": node_path, "type": "file"}
-        
-        children = []
-        for key, val in content.items():
-            children.append(transform(key, val, node_path))
-        
-        # Sort so directories come first, then files alphabetically
-        children.sort(key=lambda x: (x["type"] != "directory", x["name"]))
-        
-        return {
-            "name": name, 
-            "path": node_path, 
-            "type": "directory", 
-            "children": children
-        }
+    try:
+        with open(path, 'r') as f:
+            raw_tree = json.load(f)
+            
+        def transform(name, content, current_path=""):
+            node_path = os.path.join(current_path, name) if current_path else name
+            # Normalize to web-format separators
+            node_path = node_path.replace(os.sep, '/')
+            
+            if content == "FILE":
+                return {"name": name, "path": node_path, "type": "file"}
+            
+            children = []
+            if isinstance(content, dict):
+                for key, val in content.items():
+                    children.append(transform(key, val, node_path))
+            
+            # Sort so directories come first, then files alphabetically
+            children.sort(key=lambda x: (x["type"] != "directory", x["name"]))
+            
+            return {
+                "name": name, 
+                "path": node_path, 
+                "type": "directory", 
+                "children": children
+            }
 
-    # The top level is the dict keys
-    final_tree = []
-    for key, val in raw_tree.items():
-        final_tree.append(transform(key, val))
-        
-    final_tree.sort(key=lambda x: (x["type"] != "directory", x["name"]))
-    return final_tree
+        # The top level is the dict keys
+        final_tree = []
+        if isinstance(raw_tree, dict):
+            for key, val in raw_tree.items():
+                final_tree.append(transform(key, val))
+            
+        final_tree.sort(key=lambda x: (x["type"] != "directory", x["name"]))
+        return final_tree
+    except Exception as e:
+        print(f"Error loading tree for {repo_id}: {e}")
+        return []

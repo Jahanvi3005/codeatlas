@@ -44,6 +44,7 @@ const TreeItem = ({ item, level = 0 }) => {
 export default function FileTreeModal({ isOpen, onClose, repoId }) {
   const [tree, setTree] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (isOpen && repoId) {
@@ -53,11 +54,17 @@ export default function FileTreeModal({ isOpen, onClose, repoId }) {
 
   const fetchTree = async () => {
     setLoading(true);
+    setError(null);
     try {
       const { data } = await axios.get(`${API_BASE}/repositories/${repoId}/tree`);
-      setTree(data.tree);
+      if (data && data.tree) {
+        setTree(data.tree);
+      } else {
+        setTree([]);
+      }
     } catch (err) {
       console.error("Failed to fetch tree", err);
+      setError(err.response?.data?.detail || err.message || "Failed to load repository tree");
     } finally {
       setLoading(false);
     }
@@ -93,6 +100,17 @@ export default function FileTreeModal({ isOpen, onClose, repoId }) {
                 <div className="h-full flex flex-col items-center justify-center opacity-50">
                   <Loader2 className="w-8 h-8 text-accent animate-spin" />
                   <p className="mt-4 text-sm font-medium tracking-wide">Mapping codebase structure...</p>
+                </div>
+              ) : error ? (
+                <div className="h-full flex flex-col items-center justify-center text-red-500/80 p-8 text-center">
+                  <X className="w-12 h-12 mb-4 opacity-20" />
+                  <p className="text-sm font-medium">{error}</p>
+                  <button 
+                    onClick={fetchTree}
+                    className="mt-4 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-semibold text-white transition-colors"
+                  >
+                    Try Again
+                  </button>
                 </div>
               ) : tree && tree.length > 0 ? (
                 <div className="pb-8">
