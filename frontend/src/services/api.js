@@ -1,18 +1,18 @@
 import axios from 'axios';
 
-// Build the API base URL from the environment variable
+
 function buildBaseURL() {
   const raw = import.meta.env.VITE_API_URL;
   if (!raw) {
-    // In production single-container (HF Spaces), use relative path
+    
     if (import.meta.env.PROD) return '/api';
     return 'http://localhost:8000/api';
   }
-  // Relative path (e.g. /api) — use as-is
+  
   if (raw.startsWith('/')) return raw;
-  // Full URL with protocol
+  
   if (raw.startsWith('http')) return raw.replace(/\/$/, '');
-  // Just a hostname (e.g. from Render)
+  
   return `https://${raw}/api`;
 }
 
