@@ -11,7 +11,7 @@ print(">>> [2/4] Base imports successful. Defining lifespan...")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
+    
     print(">>> [3/4] Running startup routine...")
     try:
         from .core.database import init_db
