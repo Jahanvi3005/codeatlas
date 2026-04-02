@@ -5,7 +5,8 @@ from ..core.config import settings
 
 SUPPORTED_EXTENSIONS = {
     ".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".json", 
-    ".txt", ".css", ".html", ".sh", ".yaml", ".yml"
+    ".txt", ".css", ".html", ".sh", ".yaml", ".yml", ".go", 
+    ".c", ".cpp", ".h", ".hpp", ".rs", ".java", ".kt", ".rb", ".php"
 }
 
 def scan_and_chunk_repo(repo_path: str):
@@ -150,6 +151,26 @@ def load_tree(repo_id: str):
             for key, val in raw_tree.items():
                 final_tree.append(transform(key, val))
             
+        # Fallback: Reconstruct from vector metadata if possible
+        if not final_tree:
+            print(f"Fallback: Attempting tree reconstruction from vector metadata for {repo_id}")
+            meta_path = os.path.join(settings.DATA_DIR, repo_id, "faiss_meta.json")
+            if os.path.exists(meta_path):
+                with open(meta_path, 'r') as f:
+                    meta = json.load(f)
+                paths = {m.get("path") for m in meta if m.get("path")}
+                if paths:
+                    fallback_tree = {}
+                    for p in paths:
+                        pts = p.split('/')
+                        curr = fallback_tree
+                        for pt in pts[:-1]:
+                            if not pt: continue
+                            curr = curr.setdefault(pt, {})
+                        curr[pts[-1]] = "FILE"
+                    for key, val in fallback_tree.items():
+                        final_tree.append(transform(key, val))
+        
         final_tree.sort(key=lambda x: (x["type"] != "directory", x["name"]))
         return final_tree
     except Exception as e:
