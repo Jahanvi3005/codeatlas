@@ -32,8 +32,12 @@ def scan_and_chunk_repo(repo_path: str):
                     content = f.read()
                     
                 chunks = chunk_text(content)
+                
+                # Normalize relative path to forward slashes for the web tree
+                web_path = rel_path.replace(os.sep, '/')
+                
                 files_data.append({
-                    "path": rel_path,
+                    "path": web_path,
                     "extension": ext,
                     "size": os.path.getsize(file_path),
                     "content": content,
@@ -71,10 +75,14 @@ def save_metadata(repo_id: str, repo_path: str, files_data: list):
     # 2. Generate Tree
     tree = {}
     for file in files_data:
-        parts = file["path"].split(os.sep)
+        # Already normalized to / in scan_and_chunk_repo
+        parts = file["path"].split('/')
         current = tree
         for part in parts[:-1]:
-            current = current.setdefault(part, {})
+            if not part: continue # skip empty parts
+            if part not in current or current[part] == "FILE":
+                current[part] = {}
+            current = current[part]
         current[parts[-1]] = "FILE"
         
     with open(os.path.join(metadata_dir, "tree.json"), 'w') as f:

@@ -53,3 +53,5 @@ class SummaryResponse(BaseModel):
     tech_stack: Optional[List[str]] = None
     flow_chart: Optional[str] = None
     deep_summary: Optional[str] = None
+
+TreeNode.model_rebuild()
