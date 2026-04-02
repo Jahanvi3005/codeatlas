@@ -19,12 +19,11 @@ async def get_settings():
 
 @router.put("/")
 async def update_settings(update: SettingsUpdate):
-    # In a real production app, we'd write this to a persistent DB or config file.
-    # For this local prototype, we update the runtime settings.
+   
     settings.OLLAMA_URL = update.ollama_url
     settings.OLLAMA_MODEL = update.ollama_model
     
-    # Also attempt to update the .env file so it persists across restarts
+    
     try:
         env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
         with open(env_path, 'r') as f:
